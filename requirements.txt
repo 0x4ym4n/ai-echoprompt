@@ -1,0 +1,6 @@
+pynput
+requests
+pyaudio
+pyperclip
+pygetwindow
+python-dotenv
