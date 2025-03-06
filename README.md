@@ -4,10 +4,10 @@ A desktop application that provides real-time voice recording and transcription 
 
 ## Features
 
-- Global hotkey recording controls (Alt+V to start, Alt+S to stop)
+- Global hotkey recording controls (Alt+V to start, Alt+S to stop on Windows and Linux, Ctrl+V/Ctrl+S on macOS)
 - Real-time audio recording
 - Automatic transcription using Groq's Whisper API
-- Cross-platform support (Windows and Linux)
+- Cross-platform support (Windows, macOS and Linux)
 - Visual feedback through status window
 - Clipboard-based text insertion
 - Docker support for containerized deployment
@@ -17,6 +17,7 @@ A desktop application that provides real-time voice recording and transcription 
 - Python 3.x
 - portaudio19-dev (Linux only)
 - xdotool (Linux only)
+- portaudio and tcl-tk (macOS only)
 
 ## Installation
 
@@ -53,9 +54,9 @@ docker run -it --device /dev/snd ai-echoprompt
 
 ## Usage
 
-1. Press Alt+V to start recording
+1. Press Alt+V to start recording (Ctrl+V on macOS)
 2. Speak clearly into your microphone
-3. Press Alt+S to stop recording and begin transcription
+3. Press Alt+S to stop recording and begin transcription (Ctrl+S on macOS)
 4. The transcribed text will be automatically pasted at your cursor location
 
 
@@ -77,6 +78,12 @@ docker run -it --device /dev/snd ai-echoprompt
 ```bash
 sudo apt-get install portaudio19-dev xdotool
 ```
+## macOS
+* Requires portaudio and tcl-tk:
+```bash
+brew install portaudio tcl-tk
+```
+Additionally, you'll need to turn on the **accessibility** feature for the **Terminal** app to be able to simulate the CMD+V paste operation through: **System Settings > Privacy & Security > Accessibility**.
 ## Windows
 * No additional dependencies
 

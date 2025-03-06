@@ -15,6 +15,8 @@ from pynput.keyboard import Controller, Key
 from dotenv import load_dotenv
 import os
 
+load_dotenv()
+
 # Define functions for window focus handling based on OS
 if platform.system() == 'Linux':
     def get_active_window():
@@ -31,6 +33,23 @@ if platform.system() == 'Linux':
             subprocess.run(["xdotool", "windowactivate", window_id])
         except Exception as e:
             print("Error activating window:", e)
+elif platform.system() == 'Darwin':  # macOS
+    def get_active_window():
+        try:
+            # Getting app name with AppleScript
+            script = '''
+            tell application "System Events"
+                set frontApp to first application process whose frontmost is true
+                set frontAppName to name of frontApp
+                return frontAppName
+            end tell
+            '''
+            app_name = subprocess.check_output(["osascript", "-e", script]).decode().strip()
+            print(f"Active application: {app_name}")
+            return app_name
+        except Exception as e:
+            print(f"Error getting active window: {e}")
+            return None
 else:
     import pygetwindow as gw
     def get_active_window():
@@ -52,6 +71,7 @@ else:
 recorder = None
 focused_window = None  # Will store the originally focused window (or window id on Linux)
 gui_queue = Queue()  # For thread-safe GUI updates
+is_mac = platform.system() == 'Darwin'
 
 class AudioRecorder:
     def __init__(self, filename="temp.wav", channels=1, rate=16000, chunk=1024):
@@ -192,20 +212,41 @@ def transcribe_and_type():
             gui_queue.put(('close',))
             # Wait briefly to ensure the status window has closed
             time.sleep(0.2)
-            # Refocus the originally active window
-            if focused_window:
-                activate_window(focused_window)
-                print("Refocused to the original window.")
+            
             # Copy transcript to clipboard instead of typing character-by-character
             pyperclip.copy(transcript)
             time.sleep(0.2)
-            kb = Controller()
-            # Simulate Ctrl+V paste operation
-            kb.press(Key.ctrl)
-            kb.press('v')
-            kb.release('v')
-            kb.release(Key.ctrl)
-            print("Transcript pasted via clipboard.")
+            
+            # Refocus the originally active window and paste
+            if focused_window:
+                if is_mac:
+                    try:
+                        # using AppleScript to refocus the window and paste in one go
+                        paste_script = f'''
+                        tell application "{focused_window}" to activate
+                        delay 0.5
+                        tell application "System Events"
+                            keystroke "v" using command down
+                        end tell
+                        '''
+                        subprocess.run(["osascript", "-e", paste_script])
+                        print(f"Refocused {focused_window} and pasted transcript via clipboard")
+                    except Exception as e:
+                        print(f"Error with refocusing and pasting: {e}")
+                else:
+                    activate_window(focused_window)
+                    print("Refocused to the original window.")
+                    time.sleep(0.5)
+                    
+                    kb = Controller()
+                    # Simulate Ctrl+V paste operation
+                    kb.press(Key.ctrl)
+                    kb.press('v')
+                    kb.release('v')
+                    kb.release(Key.ctrl)
+                    print("Transcript pasted via clipboard.")
+            else:
+                print("No focused window to return to.")
         else:
             print("Failed to transcribe.")
             gui_queue.put(('close',))
@@ -228,14 +269,14 @@ if __name__ == "__main__":
 
     # Set up hotkeys
     hotkeys = keyboard.GlobalHotKeys({
-        '<alt>+v': lambda: on_start(root),
-        '<alt>+s': on_stop
+        '<ctrl>+v' if is_mac else '<alt>+v': lambda: on_start(root),
+        '<ctrl>+s' if is_mac else '<alt>+s': on_stop
     })
     hotkeys.start()
 
     print("Ready:")
-    print("  Press Alt+V to start recording.")
-    print("  Press Alt+S to stop recording and transcribe.")
+    print(f"  Press {'Ctrl+V' if is_mac else 'Alt+V'} to start recording.")
+    print(f"  Press {'Ctrl+S' if is_mac else 'Alt+S'} to stop recording and transcribe.")
 
     try:
         while True:
